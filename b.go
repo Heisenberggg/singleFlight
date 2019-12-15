@@ -20,16 +20,18 @@ type Result struct {
 }
 
 func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, err error) {
+	g.mu.Lock()	  //加互斥锁，串行执行
 	if g.m == nil {
 		g.m = make(map[string]*call)
 	}
 	//如果获取当前key的函数正在被执行，则获取它的执行结果
 	if c, ok := g.m[key]; ok {
+		g.mu.Unlock()	//解锁
 		return c.val, c.err, true
 	}
 	c := new(call)
 	g.m[key] = c
-
+	g.mu.Unlock()	//解锁
 	g.doCall(c, key, fn)
 	return c.val, c.err
 }
@@ -37,6 +39,8 @@ func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, e
 func (g *Group) doCall(c *call, key string, fn func() (interface{}, error)) {
 	//执行传入的方法
 	c.val, c.err = fn()
+	g.mu.Lock()
 	//删除Key
 	delete(g.m, key)
+	g.mu.Unlock()
 }
