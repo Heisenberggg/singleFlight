@@ -27,9 +27,11 @@ func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, e
 	//如果获取当前key的函数正在被执行，则获取它的执行结果
 	if c, ok := g.m[key]; ok {
 		g.mu.Unlock()	//解锁
+		c.wg.Wait()	//阻塞等待所有 Go 程结束（等待 Go 程计数器变为 0）
 		return c.val, c.err, true
 	}
 	c := new(call)
+	c.wg.Add(1)	//Go 程计数器加1
 	g.m[key] = c
 	g.mu.Unlock()	//解锁
 	g.doCall(c, key, fn)
@@ -39,6 +41,7 @@ func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, e
 func (g *Group) doCall(c *call, key string, fn func() (interface{}, error)) {
 	//执行传入的方法
 	c.val, c.err = fn()
+	c.wg.Done()	//Go 程计数器减 1
 	g.mu.Lock()
 	//删除Key
 	delete(g.m, key)
