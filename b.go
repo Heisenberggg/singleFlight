@@ -4,14 +4,14 @@ package singleflight // import "golang.org/x/sync/singleflight"
 import "sync"
 
 type call struct {
-	wg sync.WaitGroup  // 用于阻塞这个调用call的其他请求
-	val interface{}	   // 函数执行后的结果
+	wg sync.WaitGroup          // 用于阻塞这个调用call的其他请求
+	val interface{}	   	   // 函数执行后的结果
 	err error		   // 函数执行后的error
 }
 
 type Group struct {
-	mu sync.Mutex       // protects m
-	m  map[string]*call // 对于每一个需要获取的key有一个对应的call
+	mu sync.Mutex       	  // protects m
+	m  map[string]*call 	  // 对于每一个需要获取的key有一个对应的call
 }
 
 type Result struct {
@@ -37,4 +37,6 @@ func (g *Group) Do(key string, fn func() (interface{}, error)) (v interface{}, e
 func (g *Group) doCall(c *call, key string, fn func() (interface{}, error)) {
 	//执行传入的方法
 	c.val, c.err = fn()
+	//删除Key
+	delete(g.m, key)
 }
